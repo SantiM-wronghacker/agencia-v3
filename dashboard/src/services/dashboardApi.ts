@@ -77,3 +77,76 @@ export function getExportUrl(format: 'csv' | 'json'): string {
   const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:8001';
   return `${baseUrl}${BASE}/tasks/export?format=${format}`;
 }
+
+// ---------------------------------------------------------------------------
+// v3 — Grupos, runs y memoria
+// ---------------------------------------------------------------------------
+
+export interface AgentGroup {
+  name: string;
+  mode: string;
+  agent_count: number;
+  agent_roles: string[];
+}
+
+export interface RunStep {
+  id: string;
+  run_id: string;
+  step_index: number;
+  agent_role: string;
+  input: string;
+  output: string | null;
+  provider: string | null;
+  duration_ms: number | null;
+  success: number;
+  error: string | null;
+  timestamp: string;
+}
+
+export interface GroupRun {
+  id: string;
+  group_name: string;
+  mode: string | null;
+  status: string;
+  input_summary: string | null;
+  final_output: string | null;
+  total_duration_ms: number | null;
+  success: number | null;
+  error: string | null;
+  created_at: string;
+  completed_at: string | null;
+  steps: RunStep[];
+}
+
+export interface MemoryResult {
+  content: string;
+  run_id: string;
+  timestamp: string;
+  agent_role: string;
+  group_name: string;
+}
+
+export async function getGroups(): Promise<AgentGroup[]> {
+  const { data } = await api.get<AgentGroup[]>('/groups');
+  return data;
+}
+
+export async function runGroup(
+  name: string,
+  task: string
+): Promise<{ run_id: string; status: string; group_name: string }> {
+  const { data } = await api.post(`/groups/${name}/run`, { task });
+  return data;
+}
+
+export async function getGroupRun(name: string, runId: string): Promise<GroupRun> {
+  const { data } = await api.get<GroupRun>(`/groups/${name}/runs/${runId}`);
+  return data;
+}
+
+export async function searchMemory(q: string, limit = 10): Promise<MemoryResult[]> {
+  const { data } = await api.get<MemoryResult[]>('/memory/search', {
+    params: { q, limit },
+  });
+  return data;
+}

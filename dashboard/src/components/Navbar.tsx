@@ -9,6 +9,8 @@ interface NavbarProps {
 const links = [
   { to: '/', label: 'Dashboard' },
   { to: '/tasks', label: 'Tasks' },
+  { to: '/groups', label: 'Grupos' },
+  { to: '/memory', label: 'Memoria' },
   { to: '/monitoring', label: 'Monitoring' },
   { to: '/settings', label: 'Settings' },
 ];

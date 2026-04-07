@@ -6,6 +6,9 @@ import Dashboard from './pages/Dashboard';
 import Tasks from './pages/Tasks';
 import Monitoring from './pages/Monitoring';
 import Settings from './pages/Settings';
+import Groups from './components/Groups';
+import GroupRun from './components/GroupRun';
+import Memory from './components/Memory';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -50,6 +53,9 @@ const App: React.FC = () => {
               />
             }
           />
+          <Route path="/groups" element={<Groups />} />
+          <Route path="/groups/:name/runs/:run_id" element={<GroupRun />} />
+          <Route path="/memory" element={<Memory />} />
         </Routes>
       </div>
     </QueryClientProvider>
