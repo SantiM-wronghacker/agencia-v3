@@ -5,3 +5,5 @@ __pycache__/
 data/*.db
 export/
 /tmp/
+
+memory/db_files/
