@@ -1,5 +1,18 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from tools.base import ToolResult
+
+
+@dataclass
+class ToolCall:
+    tool_name: str
+    args: dict
+    result: "ToolResult"
+    timestamp: str
+    duration_ms: int
 
 
 @dataclass
@@ -14,6 +27,7 @@ class AgentResult:
     provider: str
     success: bool
     error: str | None
+    tool_calls: list[ToolCall] = field(default_factory=list)
 
 
 @dataclass
