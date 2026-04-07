@@ -1,6 +1,5 @@
 from fastapi import Depends
 
-from core.group import AgentGroup
 from core.orchestrator import Orchestrator
 from memory.db import AgenciaDB
 
@@ -26,10 +25,17 @@ _orchestrator: Orchestrator | None = None
 
 
 def _register_default_groups(orchestrator: Orchestrator) -> None:
-    for name in ("content_pipeline", "business_analysis", "legal_review", "ops_automation"):
-        orchestrator.register(
-            AgentGroup(name, [], mode="pipeline", db=orchestrator.db)
-        )
+    from groups import (
+        create_content_pipeline,
+        create_business_analysis,
+        create_legal_review,
+        create_ops_automation,
+    )
+    db = orchestrator.db
+    orchestrator.register(create_content_pipeline(db))
+    orchestrator.register(create_business_analysis(db))
+    orchestrator.register(create_legal_review(db))
+    orchestrator.register(create_ops_automation(db))
 
 
 def get_orchestrator(db: AgenciaDB = Depends(get_db)) -> Orchestrator:
