@@ -546,4 +546,54 @@ async def memory_search(
     return FTSSearch(db).search(q, limit=limit)
 
 
+class _ExportRequest(BaseModel):
+    client_name: str
+    package_type: str
+    license_key: str
+    license_server_url: str
+    groups: list[str]
+
+
+@router.post("/export/{client_id}")
+async def export_client(
+    client_id: str,
+    body: _ExportRequest,
+    orchestrator=Depends(get_orchestrator),
+) -> dict:
+    """Genera un paquete instalable para el cliente."""
+    # Validate groups exist
+    invalid = [g for g in body.groups if orchestrator.get_group(g) is None]
+    if invalid:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Grupos no encontrados: {', '.join(invalid)}",
+        )
+
+    from export.builder import PackageBuilder
+
+    builder = PackageBuilder(
+        client_id=client_id,
+        client_name=body.client_name,
+        package_type=body.package_type,
+        license_key=body.license_key,
+        license_server_url=body.license_server_url,
+        groups=body.groups,
+    )
+    try:
+        path = builder.build()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    files_generated = sum(1 for f in path.rglob("*") if f.is_file())
+
+    return {
+        "client_id": client_id,
+        "package_path": str(path),
+        "package_type": body.package_type,
+        "groups_included": body.groups,
+        "ollama_model": builder._model_for_package(),
+        "files_generated": files_generated,
+    }
+
+
 app.include_router(router)

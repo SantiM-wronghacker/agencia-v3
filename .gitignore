@@ -3,7 +3,8 @@ __pycache__/
 *.pyc
 .venv/
 data/*.db
-export/
+# Ignore generated client packages inside export/, but track the module
+export/*/
 /tmp/
 
 memory/db_files/
