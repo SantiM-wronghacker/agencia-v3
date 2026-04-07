@@ -1,0 +1,12 @@
+Título: ¿Qué son los agentes de navegador con IA y cómo crearlos?
+Link: https://layerxsecurity.com/es/generative-ai/ai-browser-agents/
+Snippet: Descubre qué son los agentes de navegador con IA y cómo crearlos. Esta guía abarca los tipos de agentes, la arquitectura y la seguridad de los asistentes de navegador autónomos.
+
+Título: Cómo funcionan los agentes del navegador: El futuro de la ...
+Link: https://www.saleai.ai/es/blog/how-browser-agents-work-the-future-of-web-automation-explained
+Snippet: 18 de nov. de 2025 · Aprenda cómo funcionan los agentes de navegación con IA, cómo navegan por los sitios web y por qué superan a la RPA y a los scripts en razonamiento, percepción y flujos de …
+
+Título: Pruebas de Selenium mediante agente de IA - testsprite.com
+Link: https://www.testsprite.com/use-cases/es/selenium
+Snippet: Las pruebas de Selenium son un popular framework de código abierto utilizado para automatizar interacciones de navegadores web, principalmente para pruebas funcionales de aplicaciones web.
+

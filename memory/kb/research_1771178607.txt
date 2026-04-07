@@ -1,0 +1,15 @@
+Título: [Tutorial de Streamlit] Crea rápidamente visualizaciones ... - Kanaries
+Contenido: Sumérgete en el mundo de la visualización de datos con Streamlit. Aprende cómo crear gráficos de barras, gráficos de líneas, gráficos, gráficos circulares y histogramas atractivos en esta guía completa.
+Link: https://docs.kanaries.net/es/topics/Streamlit/streamlit-visualization
+
+---
+
+Título: Dashboard Contable – Streamlit App - GitHub
+Contenido: 27 de jun. de 2025 · Está diseñado para visualizar, explorar y analizar el flujo financiero de una empresa en tiempo real, completamente desde el navegador y sin licencias de software costosas.
+Link: https://github.com/Sebastian-atehortua/dashboard-contable
+
+---
+
+Título: Visualización dinámica de datos financieros con Airflow y Streamlit
+Contenido: 19 de abr. de 2025 · Visualización dinámica de datos financieros con Airflow y Streamlit En este proyecto he desarrollado un flujo completo de tipo ETL (Extract, Transform, Load) para el análisis automatizado y …
+Link: https://juanluisacebal.com/index.php/2025/visualizacion-dinamica-de-datos-financieros-con-airflow-y-streamlit/
