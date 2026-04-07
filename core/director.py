@@ -2,65 +2,67 @@
 """
 ╔══════════════════════════════════════════════════════════════╗
 ║  DIRECTOR.PY — TeamDirector CLI Profesional                  ║
-║  Agencia Santi v2 · Super Agente Orquestador                 ║
+║  agencia-v3  ·  Super Agente Orquestador                     ║
 ╚══════════════════════════════════════════════════════════════╝
 
 Herramienta de línea de comandos para interactuar con el
 TeamDirector y sus 6 roles especializados con IA real.
 
 USO:
-  python director.py --rol strategy --tarea "Plan de 90 días para duplicar ingresos"
-  python director.py --rol finance   --tarea "ROI de inversión $50k en 12 meses"
-  python director.py --rol marketing --tarea "Campaña de lanzamiento Q2 2026"
-  python director.py --rol tech      --tarea "Arquitectura para 100k usuarios concurrentes"
-  python director.py --rol legal     --tarea "Revisar cumplimiento GDPR"
-  python director.py --rol ops       --tarea "Optimizar ciclo de onboarding"
-  python director.py --roles         (ver todos los roles disponibles)
-  python director.py --status        (verificar API y servicios)
-  python director.py --interactivo   (modo conversación)
-
-ALTERNATIVA via API (si el sistema está corriendo):
-  curl -X POST http://localhost:8000/director/asignar \\
-    -H "Authorization: Bearer santi-agencia-2026" \\
-    -H "Content-Type: application/json" \\
-    -d '{"rol": "strategy", "tarea": "Plan de crecimiento"}'
+  python core/director.py --rol strategy --tarea "Plan de 90 días para duplicar ingresos"
+  python core/director.py --rol finance   --tarea "ROI de inversión $50k en 12 meses"
+  python core/director.py --rol marketing --tarea "Campaña de lanzamiento Q2 2026"
+  python core/director.py --rol tech      --tarea "Arquitectura para 100k usuarios concurrentes"
+  python core/director.py --rol legal     --tarea "Revisar cumplimiento GDPR"
+  python core/director.py --rol ops       --tarea "Optimizar ciclo de onboarding"
+  python core/director.py --roles         (ver todos los roles disponibles)
+  python core/director.py --status        (verificar LLM y servicios)
+  python core/director.py --interactivo   (modo conversación)
 """
 
+import argparse
 import os
 import sys
-import json
-import argparse
 import time
 from datetime import datetime
+from pathlib import Path
 
-# ─── Configuración ──────────────────────────────────────────────────────────
-ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-API_URL  = "http://localhost:8000"
-API_KEY  = "santi-agencia-2026"
+# Fuerza UTF-8 en stdout/stderr para los caracteres de caja ANSI en Windows
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
+# Asegura que el root del proyecto esté en el path
+_ROOT = Path(__file__).resolve().parent.parent
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+
+# ─── Roles ───────────────────────────────────────────────────────────────────
 
 ROLES = {
-    "strategy":  {"emoji": "📊", "desc": "Estrategia de negocio, planes, OKRs, ventaja competitiva"},
-    "finance":   {"emoji": "💰", "desc": "ROI, flujo de caja, EBITDA, proyecciones financieras"},
-    "legal":     {"emoji": "⚖️",  "desc": "Contratos, GDPR, propiedad intelectual, compliance"},
-    "marketing": {"emoji": "📢", "desc": "Growth hacking, campañas digitales, branding, funnels"},
-    "tech":      {"emoji": "⚙️",  "desc": "Arquitectura, cloud, APIs, escalabilidad, DevOps"},
-    "ops":       {"emoji": "🔧", "desc": "Procesos, automatización, KPIs operacionales, Lean"},
+    "strategy":  {"emoji": "📊", "desc": "Estrategia de negocio, planes, OKRs, ventaja competitiva", "task_type": "reasoning"},
+    "finance":   {"emoji": "💰", "desc": "ROI, flujo de caja, EBITDA, proyecciones financieras",       "task_type": "reasoning"},
+    "legal":     {"emoji": "⚖️",  "desc": "Contratos, GDPR, propiedad intelectual, compliance",        "task_type": "long_doc"},
+    "marketing": {"emoji": "📢", "desc": "Growth hacking, campañas digitales, branding, funnels",      "task_type": "general"},
+    "tech":      {"emoji": "⚙️",  "desc": "Arquitectura, cloud, APIs, escalabilidad, DevOps",          "task_type": "reasoning"},
+    "ops":       {"emoji": "🔧", "desc": "Procesos, automatización, KPIs operacionales, Lean",         "task_type": "general"},
 }
 
-# ─── Colores ANSI ────────────────────────────────────────────────────────────
-RESET   = "\033[0m"
-BOLD    = "\033[1m"
-BLUE    = "\033[94m"
-GREEN   = "\033[92m"
-YELLOW  = "\033[93m"
-RED     = "\033[91m"
-CYAN    = "\033[96m"
-GRAY    = "\033[90m"
-WHITE   = "\033[97m"
+# ─── Colores ANSI ─────────────────────────────────────────────────────────────
+RESET  = "\033[0m"
+BOLD   = "\033[1m"
+BLUE   = "\033[94m"
+GREEN  = "\033[92m"
+YELLOW = "\033[93m"
+RED    = "\033[91m"
+CYAN   = "\033[96m"
+GRAY   = "\033[90m"
+WHITE  = "\033[97m"
 
 
-def _c(text, color):
-    """Colorear texto (detecta si terminal soporta colores)."""
+def _c(text: str, color: str) -> str:
+    """Colorea texto si la terminal lo soporta."""
     if sys.stdout.isatty() and os.name == "nt":
         try:
             import ctypes
@@ -75,137 +77,97 @@ def header():
     print()
     print(_c("  ╔══════════════════════════════════════════════════════╗", CYAN))
     print(_c("  ║  TEAMDIRECTOR — Super Agente Orquestador con IA Real  ║", CYAN))
-    print(_c("  ║  Agencia Santi v2  ·  6 Roles Especializados          ║", CYAN))
+    print(_c("  ║  agencia-v3  ·  6 Roles Especializados                ║", CYAN))
     print(_c("  ╚══════════════════════════════════════════════════════╝", CYAN))
     print()
 
 
+# ─── Lazy builders ────────────────────────────────────────────────────────────
+
+def _build_agents():
+    """Construye los 6 agentes del director con sus task_types."""
+    from core.agent import BaseAgent
+    return {rol: BaseAgent(rol, task_type=info["task_type"]) for rol, info in ROLES.items()}
+
+
+def _get_db():
+    from memory.db import AgenciaDB
+    return AgenciaDB()
+
+
+# ─── Comandos CLI ─────────────────────────────────────────────────────────────
+
 def mostrar_roles():
-    """Muestra todos los roles disponibles."""
     header()
     print(_c("  Roles Especializados Disponibles:", BOLD + WHITE))
     print()
     for rol, info in ROLES.items():
-        emoji = info["emoji"]
-        desc  = info["desc"]
-        print(f"    {emoji}  {_c(rol.upper(), BLUE + BOLD)}")
-        print(f"       {_c(desc, GRAY)}")
+        print(f"    {info['emoji']}  {_c(rol.upper(), BLUE + BOLD)}")
+        print(f"       {_c(info['desc'], GRAY)}")
         print()
     print(_c("  Uso:", WHITE))
-    print(f"    {_c('python director.py --rol strategy --tarea \"Optimiza el modelo de monetización\"', YELLOW)}")
+    print(f"    {_c('python core/director.py --rol strategy --tarea \"Optimiza el modelo de monetización\"', YELLOW)}")
     print()
 
 
 def verificar_estado():
-    """Verifica el estado de la API y servicios."""
     header()
     print(_c("  Estado de Servicios:", BOLD + WHITE))
     print()
 
+    # LLM activo
     try:
-        import urllib.request
-        req = urllib.request.Request(
-            f"{API_URL}/status",
-            headers={"Authorization": f"Bearer {API_KEY}"}
-        )
-        with urllib.request.urlopen(req, timeout=5) as resp:
-            data = json.loads(resp.read().decode())
-            total = data.get("agentes", {}).get("total", "?")
-            saludables = data.get("agentes", {}).get("saludables", "?")
-            print(f"    {_c('API (puerto 8000):', WHITE)}  {_c('ACTIVA', GREEN + BOLD)}")
-            print(f"    {_c('Agentes:', WHITE)}  {_c(str(total), CYAN)} registrados, {_c(str(saludables), GREEN)} saludables")
+        from llm import get_llm
+        llm = get_llm()
+        print(f"    {_c('LLM activo:', WHITE)}  {_c(llm.provider_name.upper(), GREEN + BOLD)}")
     except Exception as e:
-        print(f"    {_c('API (puerto 8000):', WHITE)}  {_c('NO RESPONDE', RED + BOLD)}")
-        print(f"    {_c(str(e)[:60], GRAY)}")
+        print(f"    {_c('LLM activo:', WHITE)}  {_c('ERROR — ' + str(e)[:60], RED)}")
 
+    # Ollama
     try:
-        import urllib.request
-        with urllib.request.urlopen(f"http://localhost:8080/", timeout=5) as resp:
-            if resp.status == 200:
-                print(f"    {_c('Dashboard (8080):', WHITE)}  {_c('ACTIVO', GREEN + BOLD)}")
+        import httpx
+        from config.settings import settings
+        r = httpx.get(f"{settings.OLLAMA_HOST}/api/tags", timeout=3.0)
+        if r.status_code == 200:
+            modelos = [m["name"] for m in r.json().get("models", [])]
+            label = f"ACTIVO — {len(modelos)} modelos: {', '.join(modelos[:3])}"
+            print(f"    {_c('Ollama:', WHITE)}      {_c(label, GREEN)}")
+        else:
+            print(f"    {_c('Ollama:', WHITE)}      {_c('NO RESPONDE', RED + BOLD)}")
     except Exception:
-        print(f"    {_c('Dashboard (8080):', WHITE)}  {_c('NO RESPONDE', RED + BOLD)}")
+        print(f"    {_c('Ollama:', WHITE)}      {_c('NO RESPONDE', RED + BOLD)}")
 
-    # Verificar LLM providers
+    # API keys configuradas
     print()
-    print(_c("  Proveedores LLM (.env):", BOLD + WHITE))
-    env_path = os.path.join(ROOT_DIR, ".env")
-    if os.path.exists(env_path):
-        keys_found = []
-        with open(env_path, "r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if "API_KEY" in line and "=" in line and not line.startswith("#"):
-                    key_name, _, key_val = line.partition("=")
-                    key_name = key_name.strip()
-                    key_val = key_val.strip().strip('"').strip("'")
-                    if key_val and key_val not in ("", "tu_key_aqui"):
-                        provider = key_name.replace("_API_KEY", "").title()
-                        keys_found.append(provider)
-                        preview = key_val[:8] + "..." if len(key_val) > 8 else key_val
-                        print(f"    {_c(provider + ':', WHITE):20} {_c('Configurado', GREEN)} {_c('(' + preview + ')', GRAY)}")
-        if not keys_found:
-            print(f"    {_c('⚠️ Sin API keys configuradas', YELLOW)}")
-    else:
-        print(f"    {_c('⚠️ .env no encontrado', YELLOW)}")
+    print(_c("  Proveedores LLM:", BOLD + WHITE))
+    from config.settings import settings
+    providers = {
+        "Groq":    settings.GROQ_API_KEY,
+        "Gemini":  settings.GEMINI_API_KEY,
+        "Mistral": settings.MISTRAL_API_KEY,
+    }
+    for name, key in providers.items():
+        if key:
+            preview = key[:8] + "..."
+            print(f"    {_c(name + ':', WHITE):20} {_c('Configurado', GREEN)} {_c('(' + preview + ')', GRAY)}")
+        else:
+            print(f"    {_c(name + ':', WHITE):20} {_c('No configurado', GRAY)}")
+
+    # DB
     print()
-
-
-def llamar_api(rol: str, tarea: str) -> dict:
-    """Llama a la API REST del sistema si está activa."""
-    import urllib.request
-    import urllib.error
-
-    payload = json.dumps({"rol": rol, "tarea": tarea}).encode("utf-8")
-    req = urllib.request.Request(
-        f"{API_URL}/director/asignar",
-        data=payload,
-        headers={
-            "Authorization": f"Bearer {API_KEY}",
-            "Content-Type": "application/json",
-        },
-        method="POST"
-    )
+    print(_c("  Base de datos:", BOLD + WHITE))
     try:
-        with urllib.request.urlopen(req, timeout=90) as resp:
-            return json.loads(resp.read().decode())
+        db = _get_db()
+        runs = db.get_recent_runs(limit=1)
+        print(f"    {_c('SQLite:', WHITE)}  {_c('OK', GREEN)}  — {_c(settings.DB_PATH, GRAY)}")
+        if runs:
+            print(f"    {_c('Último run:', WHITE)}  {_c(runs[0].get('created_at', '?')[:19], GRAY)}")
     except Exception as e:
-        raise RuntimeError(f"API error: {e}")
-
-
-def llamar_directo(rol: str, tarea: str) -> dict:
-    """Llama al TeamDirector directamente (sin API REST)."""
-    # Añadir el root al path
-    if ROOT_DIR not in sys.path:
-        sys.path.insert(0, ROOT_DIR)
-
-    # Importar team_director
-    try:
-        team_dir_path = os.path.join(ROOT_DIR, "src", "agencia", "api", "dashboard")
-        if team_dir_path not in sys.path:
-            sys.path.insert(0, team_dir_path)
-        sys.path.insert(0, os.path.join(ROOT_DIR, "src"))
-
-        from agencia.api.dashboard.team_director import TeamDirector  # type: ignore
-        director = TeamDirector()
-        return director.assign(rol, tarea)
-    except ImportError:
-        # Fallback: importar directamente
-        import importlib.util
-        spec = importlib.util.spec_from_file_location(
-            "team_director",
-            os.path.join(ROOT_DIR, "src", "agencia", "api", "dashboard", "team_director.py")
-        )
-        if spec and spec.loader:
-            mod = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(mod)  # type: ignore
-            director = mod.TeamDirector()
-            return director.assign(rol, tarea)
-        raise
+        print(f"    {_c('SQLite:', WHITE)}  {_c('ERROR — ' + str(e)[:60], RED)}")
+    print()
 
 
 def asignar_tarea(rol: str, tarea: str, verbose: bool = False) -> None:
-    """Asigna una tarea a un rol Director y muestra la respuesta."""
     info = ROLES.get(rol, {})
     emoji = info.get("emoji", "🎯")
 
@@ -219,50 +181,45 @@ def asignar_tarea(rol: str, tarea: str, verbose: bool = False) -> None:
 
     inicio = time.time()
 
-    # Intentar via API REST primero
-    resultado = None
-    metodo = "none"
     try:
-        data = llamar_api(rol, tarea)
-        resultado = data.get("resultado", "")
-        metodo = f"API ({data.get('proveedor', '?')})"
-    except Exception:
-        # Fallback: llamar directamente
-        try:
-            data = llamar_directo(rol, tarea)
-            resultado = data.get("result", "")
-            metodo = f"Directo ({data.get('provider', '?')})"
-        except Exception as e:
-            print(_c(f"  ❌ Error: {e}", RED))
-            print()
-            return
+        db = _get_db()
+        from core.agent import BaseAgent
+        agent = BaseAgent(rol, task_type=info["task_type"], db=db)
+        result = agent.run(tarea)
+    except Exception as e:
+        print(_c(f"  ❌ Error: {e}", RED))
+        print()
+        return
 
     duracion = round(time.time() - inicio, 1)
 
-    if resultado:
-        print(resultado)
+    if result.success and result.output:
+        print(result.output)
         print()
         if verbose:
             print(_c(f"  {'─'*52}", GRAY))
-            print(_c(f"  Método: {metodo}  |  Tiempo: {duracion}s  |  {datetime.now().strftime('%H:%M:%S')}", GRAY))
+            print(_c(
+                f"  Proveedor: {result.provider}  |  Tiempo: {duracion}s  |  {datetime.now().strftime('%H:%M:%S')}",
+                GRAY
+            ))
     else:
-        print(_c("  Sin respuesta del Director.", YELLOW))
+        error_msg = result.error or "Sin respuesta del Director."
+        print(_c(f"  ❌ {error_msg}", RED))
 
     print()
 
 
 def modo_interactivo() -> None:
-    """Modo conversación interactiva con el Director."""
     header()
     print(_c("  Modo Interactivo — TeamDirector", BOLD + WHITE))
     print(_c("  Escribe 'exit' o Ctrl+C para salir", GRAY))
     print(_c("  Escribe 'roles' para ver roles disponibles", GRAY))
     print()
 
-    # Seleccionar rol
     print("  Roles: " + " | ".join(f"{v['emoji']} {k}" for k, v in ROLES.items()))
     print()
 
+    rol_input = "strategy"
     while True:
         try:
             rol_input = input(_c("  ¿Qué rol usar? [strategy]: ", CYAN)).strip().lower() or "strategy"
@@ -300,7 +257,7 @@ def modo_interactivo() -> None:
     print(_c("\n  Director desconectado. ¡Hasta pronto!\n", GRAY))
 
 
-# ─── Main ────────────────────────────────────────────────────────────────────
+# ─── Main ─────────────────────────────────────────────────────────────────────
 
 def main():
     parser = argparse.ArgumentParser(
@@ -311,32 +268,13 @@ def main():
     parser.add_argument(
         "--rol", "--role",
         choices=list(ROLES.keys()),
-        help="Rol especializado: strategy, finance, legal, marketing, tech, ops"
+        help="Rol especializado: strategy, finance, legal, marketing, tech, ops",
     )
-    parser.add_argument(
-        "--tarea", "--task",
-        help="Tarea o pregunta para el Director"
-    )
-    parser.add_argument(
-        "--roles",
-        action="store_true",
-        help="Mostrar todos los roles disponibles"
-    )
-    parser.add_argument(
-        "--status",
-        action="store_true",
-        help="Verificar estado de API y servicios"
-    )
-    parser.add_argument(
-        "--interactivo", "-i",
-        action="store_true",
-        help="Modo conversación interactiva"
-    )
-    parser.add_argument(
-        "--verbose", "-v",
-        action="store_true",
-        help="Mostrar detalles adicionales (método, tiempo, proveedor)"
-    )
+    parser.add_argument("--tarea", "--task", help="Tarea o pregunta para el Director")
+    parser.add_argument("--roles", action="store_true", help="Mostrar todos los roles disponibles")
+    parser.add_argument("--status", action="store_true", help="Verificar estado de LLM y servicios")
+    parser.add_argument("--interactivo", "-i", action="store_true", help="Modo conversación interactiva")
+    parser.add_argument("--verbose", "-v", action="store_true", help="Mostrar proveedor y tiempo")
 
     args = parser.parse_args()
 
@@ -349,16 +287,15 @@ def main():
     elif args.rol and args.tarea:
         asignar_tarea(args.rol, args.tarea, verbose=args.verbose)
     else:
-        # Sin args: mostrar ayuda interactiva
         header()
         print(_c("  Uso rápido:", BOLD + WHITE))
         print()
-        print(f"    {_c('python director.py --rol strategy --tarea \"Optimiza el modelo de monetización\"', YELLOW)}")
-        print(f"    {_c('python director.py --rol finance   --tarea \"ROI de inversión $50k en 12 meses\"', YELLOW)}")
-        print(f"    {_c('python director.py --roles', CYAN)}          Ver todos los roles")
-        print(f"    {_c('python director.py --status', CYAN)}         Estado de servicios")
-        print(f"    {_c('python director.py --interactivo', CYAN)}    Modo conversación")
-        print(f"    {_c('python director.py --help', CYAN)}           Ayuda completa")
+        print(f"    {_c('python core/director.py --rol strategy --tarea \"Optimiza el modelo de monetización\"', YELLOW)}")
+        print(f"    {_c('python core/director.py --rol finance   --tarea \"ROI de inversión $50k en 12 meses\"', YELLOW)}")
+        print(f"    {_c('python core/director.py --roles', CYAN)}          Ver todos los roles")
+        print(f"    {_c('python core/director.py --status', CYAN)}         Estado de servicios")
+        print(f"    {_c('python core/director.py --interactivo', CYAN)}    Modo conversación")
+        print(f"    {_c('python core/director.py --help', CYAN)}           Ayuda completa")
         print()
         print(_c("  Roles disponibles:", WHITE))
         for rol, info in ROLES.items():

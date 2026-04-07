@@ -44,6 +44,7 @@ class BaseAgent:
         input: str,
         run_id: str = None,
         step_index: int = 0,
+        managed_by_group: bool = False,
     ) -> AgentResult:
         if run_id is None:
             run_id = str(uuid.uuid4())
@@ -51,7 +52,7 @@ class BaseAgent:
         timestamp = datetime.now(timezone.utc)
         start_ms = timestamp.timestamp() * 1000
 
-        self._hook_pre_run(run_id, input, step_index, timestamp)
+        self._hook_pre_run(run_id, input, step_index, timestamp, managed_by_group)
 
         # Inject memory context if available
         if self.memory:
@@ -90,7 +91,7 @@ class BaseAgent:
                 error=str(e),
             )
 
-        self._hook_post_run(run_id, result)
+        self._hook_post_run(run_id, result, managed_by_group)
         return result
 
     def _hook_pre_run(
@@ -99,9 +100,10 @@ class BaseAgent:
         input: str,
         step_index: int = 0,
         timestamp: datetime = None,
+        managed_by_group: bool = False,
     ):
         print(f"[{self.role}] iniciando run {run_id[:8]}...")
-        if self.db is not None:
+        if self.db is not None and not managed_by_group:
             self._current_step_id = str(uuid.uuid4())
             ts = timestamp or datetime.now(timezone.utc)
             self.db.create_run(run_id, self.role, "solo", input[:200])
@@ -109,9 +111,9 @@ class BaseAgent:
                 self._current_step_id, run_id, step_index, self.role, input, ts
             )
 
-    def _hook_post_run(self, run_id: str, result: AgentResult):
+    def _hook_post_run(self, run_id: str, result: AgentResult, managed_by_group: bool = False):
         print(f"[{self.role}] completado en {result.duration_ms}ms — {result.provider}")
-        if self.db is not None and self._current_step_id is not None:
+        if self.db is not None and not managed_by_group and self._current_step_id is not None:
             step_id = self._current_step_id
             self.db.complete_step(
                 run_id,
