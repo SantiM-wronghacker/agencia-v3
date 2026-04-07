@@ -3,6 +3,7 @@ Rutas y aplicación FastAPI para el Dashboard API v2.
 """
 from __future__ import annotations
 
+import asyncio
 import csv
 import io
 import json
@@ -14,9 +15,10 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect, status
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 
 from .models import AlertConfig, DashboardMetrics, DirectorAssignRequest, DirectorAssignResponse, HealthResponse, RunAgentRequest, TaskCreate, TaskSchema, TaskStatus, TaskUpdate
 from .repository import TaskRepository
@@ -407,3 +409,141 @@ async def director_assign(body: DirectorAssignRequest) -> DirectorAssignResponse
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     return DirectorAssignResponse(**result)
+
+
+# ---------------------------------------------------------------------------
+# v3 — grupos, runs y memoria
+# ---------------------------------------------------------------------------
+
+from api.dependencies import get_db, get_orchestrator  # noqa: E402
+
+
+class _GroupRunRequest(BaseModel):
+    task: str
+    mode: Optional[str] = None
+
+
+router = APIRouter()
+
+
+@router.get("/groups")
+async def list_groups(orchestrator=Depends(get_orchestrator)) -> list[dict]:
+    """Lista todos los grupos registrados en el orchestrator."""
+    return orchestrator.list_groups()
+
+
+async def _run_group_bg(
+    orchestrator,
+    group_name: str,
+    task: str,
+    run_id: str,
+) -> None:
+    """Background task: ejecuta el grupo y emite eventos WebSocket."""
+    await manager.broadcast(
+        _ws_event(
+            "group_run_started",
+            {"run_id": run_id, "group_name": group_name, "task_preview": task[:100]},
+        )
+    )
+    try:
+        result = await asyncio.to_thread(
+            orchestrator.run, group_name, task, run_id
+        )
+        for step in result.steps:
+            await manager.broadcast(
+                _ws_event(
+                    "group_step_completed",
+                    {
+                        "run_id": run_id,
+                        "group_name": group_name,
+                        "step_index": step.step_index,
+                        "role": step.role,
+                        "success": step.success,
+                    },
+                )
+            )
+        await manager.broadcast(
+            _ws_event(
+                "group_run_finished",
+                {
+                    "run_id": run_id,
+                    "group_name": group_name,
+                    "success": result.success,
+                    "duration_ms": result.total_duration_ms,
+                },
+            )
+        )
+    except Exception as exc:
+        await manager.broadcast(
+            _ws_event(
+                "group_run_finished",
+                {"run_id": run_id, "group_name": group_name, "success": False, "error": str(exc)},
+            )
+        )
+
+
+@router.post("/groups/{group_name}/run")
+async def run_group(
+    group_name: str,
+    body: _GroupRunRequest,
+    orchestrator=Depends(get_orchestrator),
+) -> dict:
+    """Lanza un grupo en background y retorna el run_id inmediatamente."""
+    group = orchestrator.get_group(group_name)
+    if group is None:
+        raise HTTPException(status_code=404, detail=f"Grupo '{group_name}' no encontrado")
+
+    if body.mode is not None:
+        from core.group import _VALID_MODES
+        if body.mode not in _VALID_MODES:
+            raise HTTPException(status_code=400, detail=f"Modo '{body.mode}' no válido")
+        group.mode = body.mode
+
+    run_id = str(uuid.uuid4())
+    asyncio.create_task(_run_group_bg(orchestrator, group_name, body.task, run_id))
+    return {"run_id": run_id, "status": "started", "group_name": group_name}
+
+
+@router.get("/groups/{group_name}/runs/{run_id}")
+async def get_group_run(
+    group_name: str,
+    run_id: str,
+    db=Depends(get_db),
+) -> dict:
+    """Estado actual de un run específico."""
+    run = db.get_run(run_id)
+    if run is None or run.get("group_name") != group_name:
+        raise HTTPException(status_code=404, detail=f"Run '{run_id}' no encontrado")
+    steps = db.get_steps(run_id)
+    return {**run, "steps": steps}
+
+
+@router.get("/groups/{group_name}/runs")
+async def list_group_runs(
+    group_name: str,
+    db=Depends(get_db),
+) -> list[dict]:
+    """Últimos 20 runs del grupo con sus steps."""
+    all_runs = db.get_recent_runs(limit=100)
+    runs = [r for r in all_runs if r.get("group_name") == group_name][:20]
+    result = []
+    for run in runs:
+        steps = db.get_steps(run["id"])
+        result.append({**run, "steps": steps})
+    return result
+
+
+@router.get("/memory/search")
+async def memory_search(
+    q: str = Query(..., min_length=1),
+    limit: int = Query(10, ge=1, le=100),
+    db=Depends(get_db),
+) -> list[dict]:
+    """Búsqueda FTS5 en observaciones."""
+    if not q.strip():
+        raise HTTPException(status_code=400, detail="El parámetro 'q' no puede estar vacío")
+    from memory.fts import FTSSearch
+    return FTSSearch(db).search(q, limit=limit)
+
+
+app.include_router(router)

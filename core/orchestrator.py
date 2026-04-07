@@ -17,13 +17,13 @@ class Orchestrator:
             group.db = self.db
         self._groups[group.name] = group
 
-    def run(self, group_name: str, task: str) -> GroupResult:
+    def run(self, group_name: str, task: str, run_id: str = None) -> GroupResult:
         if group_name not in self._groups:
             raise ValueError(
                 f"Grupo '{group_name}' no registrado. "
                 f"Disponibles: {', '.join(self._groups) or 'ninguno'}"
             )
-        return self._groups[group_name].execute(task)
+        return self._groups[group_name].execute(task, run_id=run_id)
 
     def list_groups(self) -> list[dict]:
         return [

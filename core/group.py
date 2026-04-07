@@ -28,8 +28,8 @@ class AgentGroup:
         self.mode = mode
         self.db = db
 
-    def execute(self, task: str) -> GroupResult:
-        run_id = str(uuid.uuid4())
+    def execute(self, task: str, run_id: str = None) -> GroupResult:
+        run_id = run_id or str(uuid.uuid4())
         start_ms = datetime.now(timezone.utc).timestamp() * 1000
 
         if self.db:
