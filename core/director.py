@@ -90,6 +90,12 @@ def _build_agents():
     return {rol: BaseAgent(rol, task_type=info["task_type"]) for rol, info in ROLES.items()}
 
 
+def build_director_agents() -> list:
+    """Retorna lista de 6 BaseAgent, uno por rol del director."""
+    from core.agent import BaseAgent
+    return [BaseAgent(rol, task_type=info["task_type"]) for rol, info in ROLES.items()]
+
+
 def _get_db():
     from memory.db import AgenciaDB
     return AgenciaDB()

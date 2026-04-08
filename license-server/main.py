@@ -189,6 +189,8 @@ async def unblock_client(client_id: str, db: LicenseDB = Depends(get_db)):
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(token: str = Query(default="")):
+    if not token or token != os.getenv("ADMIN_TOKEN", "dev-token"):
+        raise HTTPException(status_code=403, detail="Token inválido")
     html_path = Path(__file__).parent / "dashboard.html"
     html = html_path.read_text(encoding="utf-8")
     # Inject token into the page so JS can use it
