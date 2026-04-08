@@ -4,3 +4,6 @@ from groups.legal_review import create_legal_review
 from groups.ops_automation import create_ops_automation
 from groups.sales_pipeline import create_sales_pipeline
 from groups.quotation_generator import create_quotation_generator
+from groups.hr_onboarding import create_hr_onboarding
+from groups.accounting_report import create_accounting_report
+from groups.ops_daily import create_ops_daily
