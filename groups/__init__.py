@@ -2,3 +2,5 @@ from groups.business_analysis import create_business_analysis
 from groups.content_pipeline import create_content_pipeline
 from groups.legal_review import create_legal_review
 from groups.ops_automation import create_ops_automation
+from groups.sales_pipeline import create_sales_pipeline
+from groups.quotation_generator import create_quotation_generator
