@@ -25,3 +25,10 @@ dev = [
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+markers = [
+    "unit: fast unit tests with no external dependencies",
+    "integration: integration tests using in-memory or mocked services",
+    "e2e: end-to-end tests that require real infrastructure",
+    "slow: tests that may take more than 30 seconds",
+    "requires_ollama: tests that require Ollama running locally",
+]
