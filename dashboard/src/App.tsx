@@ -9,6 +9,7 @@ import Settings from './pages/Settings';
 import Groups from './components/Groups';
 import GroupRun from './components/GroupRun';
 import Memory from './components/Memory';
+import Scheduler from './components/Scheduler';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -56,6 +57,7 @@ const App: React.FC = () => {
           <Route path="/groups" element={<Groups />} />
           <Route path="/groups/:name/runs/:run_id" element={<GroupRun />} />
           <Route path="/memory" element={<Memory />} />
+          <Route path="/scheduler" element={<Scheduler />} />
         </Routes>
       </div>
     </QueryClientProvider>

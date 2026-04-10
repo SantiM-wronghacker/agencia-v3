@@ -597,3 +597,109 @@ async def export_client(
 
 
 app.include_router(router)
+
+
+# ---------------------------------------------------------------------------
+# Webhooks — recibe eventos externos y dispara grupos
+# ---------------------------------------------------------------------------
+
+_WEBHOOK_ENDPOINTS_FILE = "data/webhook_endpoints.json"
+_WEBHOOK_EVENTS_FILE = "data/webhook_events.json"
+
+
+def _load_json_file(path: str) -> list:
+    try:
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return []
+
+
+def _append_json_file(path: str, entry: dict) -> None:
+    items = _load_json_file(path)
+    items.append(entry)
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(items, f, indent=2, ensure_ascii=False)
+
+
+@app.post("/webhooks/{client_id}/{trigger_name}")
+async def receive_webhook(client_id: str, trigger_name: str) -> dict:
+    """Recibe un webhook y dispara el grupo configurado en background."""
+    endpoints = _load_json_file(_WEBHOOK_ENDPOINTS_FILE)
+    endpoint = next(
+        (e for e in endpoints if e.get("name") == trigger_name and e.get("active")),
+        None,
+    )
+    event = {
+        "endpoint_name": trigger_name,
+        "client_id": client_id,
+        "received_at": datetime.now(timezone.utc).isoformat(),
+        "summary": f"Webhook from {client_id}/{trigger_name}",
+    }
+    _append_json_file(_WEBHOOK_EVENTS_FILE, event)
+
+    if endpoint:
+        group_name = endpoint.get("group_name", "")
+        return {
+            "received": True,
+            "trigger": trigger_name,
+            "group_triggered": group_name,
+        }
+    return {"received": True}
+
+
+# ---------------------------------------------------------------------------
+# Scheduler — CRUD de tareas programadas
+# ---------------------------------------------------------------------------
+
+_SCHEDULER_FILE = "data/scheduled_tasks.json"
+
+
+class _SchedulerTaskCreate(BaseModel):
+    group_name: str
+    cron: str
+    task_template: str = ""
+    description: str = ""
+
+
+@app.get("/scheduler/tasks")
+async def list_scheduler_tasks() -> list:
+    """Lista todas las tareas programadas."""
+    return _load_json_file(_SCHEDULER_FILE)
+
+
+@app.post("/scheduler/tasks", status_code=201)
+async def create_scheduler_task(body: _SchedulerTaskCreate) -> dict:
+    """Crea una nueva tarea programada tras validar el cron."""
+    from tools.automation.scheduler import SchedulerTool
+    tool_obj = SchedulerTool()
+    result = tool_obj.run(
+        action="schedule",
+        group_name=body.group_name,
+        task=body.task_template or body.description,
+        cron_expression=body.cron,
+    )
+    if not result.success:
+        raise HTTPException(status_code=400, detail=result.error)
+    return result.raw_data
+
+
+@app.delete("/scheduler/tasks/{task_id}", status_code=200)
+async def delete_scheduler_task(task_id: str) -> dict:
+    """Cancela (desactiva) una tarea programada."""
+    tasks = _load_json_file(_SCHEDULER_FILE)
+    found = False
+    for t in tasks:
+        if t.get("id") == task_id:
+            t["active"] = False
+            found = True
+            break
+    if not found:
+        raise HTTPException(status_code=404, detail=f"Tarea '{task_id}' no encontrada")
+    os.makedirs("data", exist_ok=True)
+    with open(_SCHEDULER_FILE, "w", encoding="utf-8") as f:
+        json.dump(tasks, f, indent=2, ensure_ascii=False)
+    return {"deleted": True, "task_id": task_id}

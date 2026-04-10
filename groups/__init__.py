@@ -16,3 +16,6 @@ from groups.travel_planner import create_travel_planner
 from groups.market_intelligence import create_market_intelligence
 from groups.financial_advisor import create_financial_advisor
 from groups.education_manager import create_education_manager
+from groups.daily_report import create_daily_report
+from groups.social_autopilot import create_social_autopilot
+from groups.lead_nurturing import create_lead_nurturing

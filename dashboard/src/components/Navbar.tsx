@@ -12,6 +12,7 @@ const links = [
   { to: '/groups', label: 'Grupos' },
   { to: '/memory', label: 'Memoria' },
   { to: '/monitoring', label: 'Monitoring' },
+  { to: '/scheduler', label: 'Scheduler' },
   { to: '/settings', label: 'Settings' },
 ];
 
