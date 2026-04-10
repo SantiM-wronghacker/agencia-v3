@@ -7,3 +7,9 @@ from groups.quotation_generator import create_quotation_generator
 from groups.hr_onboarding import create_hr_onboarding
 from groups.accounting_report import create_accounting_report
 from groups.ops_daily import create_ops_daily
+from groups.restaurant_manager import create_restaurant_manager
+from groups.health_assistant import create_health_assistant
+from groups.real_estate_agent import create_real_estate_agent
+from groups.logistics_coordinator import create_logistics_coordinator
+from groups.insurance_advisor import create_insurance_advisor
+from groups.travel_planner import create_travel_planner
