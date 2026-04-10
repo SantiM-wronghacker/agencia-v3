@@ -13,3 +13,6 @@ from groups.real_estate_agent import create_real_estate_agent
 from groups.logistics_coordinator import create_logistics_coordinator
 from groups.insurance_advisor import create_insurance_advisor
 from groups.travel_planner import create_travel_planner
+from groups.market_intelligence import create_market_intelligence
+from groups.financial_advisor import create_financial_advisor
+from groups.education_manager import create_education_manager
