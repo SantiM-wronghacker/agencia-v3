@@ -17,5 +17,17 @@ class Settings(BaseSettings):
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
+    @property
+    def llm_provider(self) -> str:
+        return self.LLM_PROVIDER
+
+    @property
+    def ollama_host(self) -> str:
+        return self.OLLAMA_HOST
+
+    @property
+    def db_path(self) -> str:
+        return self.DB_PATH
+
 
 settings = Settings()

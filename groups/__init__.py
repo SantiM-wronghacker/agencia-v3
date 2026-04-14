@@ -19,3 +19,7 @@ from groups.education_manager import create_education_manager
 from groups.daily_report import create_daily_report
 from groups.social_autopilot import create_social_autopilot
 from groups.lead_nurturing import create_lead_nurturing
+from groups.social_media_manager import create_social_media_manager
+from groups.email_campaign import create_email_campaign
+from groups.blog_publisher import create_blog_publisher
+from groups.content_repurposer import create_content_repurposer
