@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { getClients, createClient, blockClient, unblockClient, sendLink } from '@/lib/api'
 
 interface Client {
   id: string
@@ -13,7 +14,6 @@ interface Client {
 }
 
 const ADMIN_PASSWORD = 'nomi2026'
-const LICENSE_SERVER_URL = 'http://localhost:8080'
 
 export default function AdminPage() {
   const [authenticated, setAuthenticated] = useState(false)
@@ -52,12 +52,7 @@ export default function AdminPage() {
   const loadClients = async () => {
     setLoading(true)
     try {
-      const res = await fetch(`${LICENSE_SERVER_URL}/clients`, {
-        headers: { 'X-Admin-Token': ADMIN_PASSWORD },
-      })
-      if (res.ok) {
-        setClients(await res.json())
-      }
+      setClients(await getClients())
     } catch (err) {
       setError('Error cargando clientes')
       console.error(err)
@@ -68,19 +63,10 @@ export default function AdminPage() {
   const handleCreateClient = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      const res = await fetch(`${LICENSE_SERVER_URL}/clients`, {
-        method: 'POST',
-        headers: {
-          'X-Admin-Token': ADMIN_PASSWORD,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(newClient),
-      })
-      if (res.ok) {
-        setNewClient({ name: '', email: '', package_type: 'lite', paid_until: '' })
-        setShowNewClientForm(false)
-        await loadClients()
-      }
+      await createClient(newClient)
+      setNewClient({ name: '', email: '', package_type: 'lite', paid_until: '' })
+      setShowNewClientForm(false)
+      await loadClients()
     } catch (err) {
       setError('Error creando cliente')
       console.error(err)
@@ -89,13 +75,8 @@ export default function AdminPage() {
 
   const handleBlockClient = async (clientId: string) => {
     try {
-      const res = await fetch(`${LICENSE_SERVER_URL}/clients/${clientId}/block`, {
-        method: 'POST',
-        headers: { 'X-Admin-Token': ADMIN_PASSWORD },
-      })
-      if (res.ok) {
-        await loadClients()
-      }
+      await blockClient(clientId)
+      await loadClients()
     } catch (err) {
       console.error(err)
     }
@@ -103,13 +84,8 @@ export default function AdminPage() {
 
   const handleUnblockClient = async (clientId: string) => {
     try {
-      const res = await fetch(`${LICENSE_SERVER_URL}/clients/${clientId}/unblock`, {
-        method: 'POST',
-        headers: { 'X-Admin-Token': ADMIN_PASSWORD },
-      })
-      if (res.ok) {
-        await loadClients()
-      }
+      await unblockClient(clientId)
+      await loadClients()
     } catch (err) {
       console.error(err)
     }
@@ -117,13 +93,8 @@ export default function AdminPage() {
 
   const handleSendLink = async (clientId: string) => {
     try {
-      const res = await fetch(`${LICENSE_SERVER_URL}/clients/${clientId}/send-link`, {
-        method: 'POST',
-        headers: { 'X-Admin-Token': ADMIN_PASSWORD },
-      })
-      if (res.ok) {
-        alert('Email enviado exitosamente')
-      }
+      await sendLink(clientId)
+      alert('Email enviado exitosamente')
     } catch (err) {
       console.error(err)
       alert('Error enviando email')

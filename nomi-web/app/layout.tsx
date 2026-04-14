@@ -1,10 +1,21 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import './globals.css'
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+}
+
 export const metadata: Metadata = {
-  title: 'nomi — Automatización para tu negocio',
-  description: 'Agentes de IA listos desde el primer día. Sin conocimientos técnicos. Funciona en tu equipo.',
-  viewport: 'width=device-width, initial-scale=1',
+  title: 'Nomi — Automatización IA para tu negocio',
+  description: 'El trabajo no para. Aunque tú sí. Nomi automatiza las tareas más repetitivas de tu operación.',
+  openGraph: {
+    title: 'Nomi — Automatización IA para tu negocio',
+    description: 'El trabajo no para. Aunque tú sí. Nomi automatiza las tareas más repetitivas de tu operación.',
+    type: 'website',
+    url: 'https://nomi-mx.com',
+    siteName: 'Nomi',
+  },
 }
 
 export default function RootLayout({

@@ -6,6 +6,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 
 load_dotenv()
@@ -25,6 +26,14 @@ from models import (
 )
 
 app = FastAPI(title="License Server", version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://nomi-mx.com", "https://www.nomi-mx.com"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # ---------------------------------------------------------------------------
 # DB dependency
@@ -350,6 +359,93 @@ async def send_download_link(
         "message": f"Email enviado a {email_to}",
         "download_url": download_url,
     }
+
+
+# ---------------------------------------------------------------------------
+# Leads endpoints
+# ---------------------------------------------------------------------------
+
+def _init_leads_table(db_path: str) -> None:
+    import sqlite3
+    conn = sqlite3.connect(db_path)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS leads (
+            id        INTEGER PRIMARY KEY AUTOINCREMENT,
+            nombre    TEXT NOT NULL,
+            email     TEXT NOT NULL,
+            mensaje   TEXT,
+            plan      TEXT,
+            agentes   TEXT,
+            precio    REAL,
+            created_at TEXT NOT NULL
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+
+@app.on_event("startup")
+async def _startup() -> None:
+    db = get_db()
+    _init_leads_table(db.db_path)
+
+
+@app.post("/leads", status_code=201)
+async def create_lead(request: Request, db: LicenseDB = Depends(get_db)):
+    import json
+    import sqlite3
+    body = await request.json()
+    nombre = body.get("nombre", "").strip()
+    email = body.get("email", "").strip()
+    if not nombre or not email:
+        raise HTTPException(status_code=422, detail="nombre y email son requeridos")
+
+    agentes = body.get("agentes", [])
+    if isinstance(agentes, list):
+        agentes_str = json.dumps(agentes)
+    else:
+        agentes_str = str(agentes)
+
+    now = datetime.now(timezone.utc).isoformat()
+    conn = sqlite3.connect(db.db_path)
+    cur = conn.execute(
+        "INSERT INTO leads (nombre, email, mensaje, plan, agentes, precio, created_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (
+            nombre,
+            email,
+            body.get("mensaje", ""),
+            body.get("plan", ""),
+            agentes_str,
+            body.get("precio_estimado"),
+            now,
+        ),
+    )
+    lead_id = cur.lastrowid
+    conn.commit()
+    conn.close()
+    return {"id": lead_id, "ok": True}
+
+
+@app.get("/leads", dependencies=[Depends(verify_admin)])
+async def list_leads(db: LicenseDB = Depends(get_db)):
+    import json
+    import sqlite3
+    conn = sqlite3.connect(db.db_path)
+    conn.row_factory = sqlite3.Row
+    rows = conn.execute(
+        "SELECT * FROM leads ORDER BY created_at DESC"
+    ).fetchall()
+    conn.close()
+    result = []
+    for row in rows:
+        d = dict(row)
+        try:
+            d["agentes"] = json.loads(d["agentes"])
+        except (json.JSONDecodeError, TypeError):
+            d["agentes"] = []
+        result.append(d)
+    return result
 
 
 @app.get("/dashboard", response_class=HTMLResponse)

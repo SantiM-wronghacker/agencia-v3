@@ -291,6 +291,7 @@ export default function Quoter() {
               plan={selectedPlan || 'lite'}
               agents={selectedAgents}
               needsDetails={selectedAgents.length <= 2}
+              precioEstimado={pricing.total}
             />
 
             <div className="flex gap-4 justify-between mt-8">

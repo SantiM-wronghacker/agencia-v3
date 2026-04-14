@@ -1,21 +1,25 @@
 'use client'
 
 import { useState } from 'react'
+import { submitLead } from '@/lib/api'
 
 interface ContactFormProps {
   giro: string
   plan: string
   agents: string[]
   needsDetails: boolean
+  precioEstimado?: number
 }
 
-export default function ContactForm({ giro, plan, agents, needsDetails }: ContactFormProps) {
+export default function ContactForm({ giro, plan, agents, needsDetails, precioEstimado }: ContactFormProps) {
   const [formData, setFormData] = useState({
     nombre: '',
     correo: '',
     necesidades: '',
   })
   const [submitted, setSubmitted] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({
@@ -24,27 +28,31 @@ export default function ContactForm({ giro, plan, agents, needsDetails }: Contac
     })
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setLoading(true)
+    setError('')
 
-    const payload = {
-      ...formData,
-      giro,
-      plan,
-      agents,
-      timestamp: new Date().toISOString(),
+    try {
+      await submitLead({
+        nombre: formData.nombre,
+        email: formData.correo,
+        mensaje: formData.necesidades,
+        plan,
+        agentes: agents,
+        precio_estimado: precioEstimado,
+      })
+      setSubmitted(true)
+      setTimeout(() => {
+        setSubmitted(false)
+        setFormData({ nombre: '', correo: '', necesidades: '' })
+      }, 5000)
+    } catch (err) {
+      console.error(err)
+      setError('Hubo un problema al enviar. Intenta de nuevo.')
+    } finally {
+      setLoading(false)
     }
-
-    console.log('Cotización enviada:', payload)
-
-    // Por ahora: guardar en localStorage o enviar a API
-    // Después: POST a /api/cotizaciones o license-server
-
-    setSubmitted(true)
-    setTimeout(() => {
-      setSubmitted(false)
-      setFormData({ nombre: '', correo: '', necesidades: '' })
-    }, 5000)
   }
 
   if (submitted) {
@@ -102,11 +110,16 @@ export default function ContactForm({ giro, plan, agents, needsDetails }: Contac
         </div>
       )}
 
+      {error && (
+        <div className="text-sm text-red-600">{error}</div>
+      )}
+
       <button
         type="submit"
-        className="w-full px-6 py-3 bg-nomi-accent text-white rounded-lg font-500 hover:brightness-90"
+        disabled={loading}
+        className="w-full px-6 py-3 bg-nomi-accent text-white rounded-lg font-500 hover:brightness-90 disabled:opacity-60"
       >
-        Solicitar cotización
+        {loading ? 'Enviando...' : 'Solicitar cotización'}
       </button>
     </form>
   )
