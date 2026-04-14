@@ -17,7 +17,7 @@ win:
     - target: nsis
       arch:
         - x64
-  icon: build/icon.ico
+  icon: build/icons/nomi-icon-256.png
 
 mac:
   target:
@@ -25,16 +25,23 @@ mac:
       arch:
         - x64
         - arm64
-  icon: build/icon.icns
+  icon: build/icon.png
   category: public.app-category.business
+
+linux:
+  target:
+    - target: AppImage
+      arch:
+        - x64
+  icon: build/icons/
 
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
-  installerIcon: build/icon.ico
-  installerHeaderIcon: build/icon.ico
+  installerIcon: build/icons/nomi-icon-256.png
+  installerHeaderIcon: build/icons/nomi-icon-256.png
 
 dmg:
   title: Nomi ${version}

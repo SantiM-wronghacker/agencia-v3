@@ -1,0 +1,1 @@
+[2026-04-08 16:02:08] [FÁBRICA] Modo usuario: NOCHE (Todas las tareas: noche + factory + misiones (NOCHE))

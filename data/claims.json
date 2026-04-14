@@ -1,0 +1,83 @@
+[
+  {
+    "folio": "SIN-4CB91E93",
+    "policy_id": "POL-001",
+    "incident_date": "2026-05-01",
+    "description": "Accidente vehicular",
+    "estimated_loss": 50000,
+    "status": "reported",
+    "reported_at": "2026-04-10T04:39:16.979297"
+  },
+  {
+    "folio": "SIN-ADD69CAC",
+    "policy_id": "POL-001",
+    "incident_date": "2026-05-01",
+    "description": "Accidente vehicular",
+    "estimated_loss": 50000,
+    "status": "reported",
+    "reported_at": "2026-04-10T04:44:29.531592"
+  },
+  {
+    "folio": "SIN-05C92515",
+    "policy_id": "POL-001",
+    "incident_date": "2026-05-01",
+    "description": "Accidente vehicular",
+    "estimated_loss": 50000,
+    "status": "reported",
+    "reported_at": "2026-04-10T05:20:15.302362"
+  },
+  {
+    "folio": "SIN-B36CAD74",
+    "policy_id": "POL-001",
+    "incident_date": "2026-05-01",
+    "description": "Accidente vehicular",
+    "estimated_loss": 50000,
+    "status": "reported",
+    "reported_at": "2026-04-10T05:25:22.049594"
+  },
+  {
+    "folio": "SIN-034C21AB",
+    "policy_id": "POL-001",
+    "incident_date": "2026-05-01",
+    "description": "Accidente vehicular",
+    "estimated_loss": 50000,
+    "status": "reported",
+    "reported_at": "2026-04-10T05:35:24.250086"
+  },
+  {
+    "folio": "SIN-92D4822E",
+    "policy_id": "POL-001",
+    "incident_date": "2026-05-01",
+    "description": "Accidente vehicular",
+    "estimated_loss": 50000,
+    "status": "reported",
+    "reported_at": "2026-04-10T20:39:05.052562"
+  },
+  {
+    "folio": "SIN-482D9762",
+    "policy_id": "POL-001",
+    "incident_date": "2026-05-01",
+    "description": "Accidente vehicular",
+    "estimated_loss": 50000,
+    "status": "reported",
+    "reported_at": "2026-04-10T20:48:02.804222"
+  },
+  {
+    "folio": "SIN-53D57C6A",
+    "policy_id": "POL-001",
+    "incident_date": "2026-05-01",
+    "description": "Accidente vehicular",
+    "estimated_loss": 50000,
+    "status": "reported",
+    "reported_at": "2026-04-10T20:55:55.675201"
+  },
+  {
+    "folio": "SIN-8877087E",
+    "policy_id": "POL-001",
+    "incident_date": "2026-05-01",
+    "description": "Accidente vehicular",
+    "estimated_loss": 50000,
+    "status": "reported",
+    "reported_at": "2026-04-10T21:02:49.550325"
+  }
+]

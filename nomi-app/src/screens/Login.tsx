@@ -65,8 +65,16 @@ export default function Login({ onSuccess, onSuspended }: LoginProps) {
         style={{ background: 'rgba(255,255,255,0.5)', backdropFilter: 'blur(8px)' }}
       >
         {/* Logo */}
-        <div className="text-center mb-10">
-          <h1 className="text-4xl font-semibold text-nomi-text">nomi</h1>
+        <div className="flex justify-center mb-10">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 106 32" style={{ height: 48, width: 'auto' }}>
+            <rect width="32" height="32" rx="7" fill="#6aaad9"/>
+            <text x="16" y="16" textAnchor="middle" dominantBaseline="central"
+              fontFamily="'Helvetica Neue',Helvetica,Arial,sans-serif"
+              fontSize="22" fontWeight="700" fill="white">n</text>
+            <text x="44" y="16" dominantBaseline="central"
+              fontFamily="'Helvetica Neue',Helvetica,Arial,sans-serif"
+              fontSize="21" fontWeight="600" fill="#1a1f2e">nomi</text>
+          </svg>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">

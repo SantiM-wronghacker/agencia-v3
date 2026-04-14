@@ -42,7 +42,12 @@ export default function Sidebar({ agentes, active, onSelect, onMemory, plan, cli
       className="w-56 flex-shrink-0 flex flex-col h-full">
       {/* Logo */}
       <div className="px-5 py-5 border-b border-nomi-border">
-        <div className="text-xl font-semibold text-nomi-text">nomi</div>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" style={{ height: 28, width: 28 }}>
+          <rect width="32" height="32" rx="7" fill="#6aaad9"/>
+          <text x="16" y="16" textAnchor="middle" dominantBaseline="central"
+            fontFamily="'Helvetica Neue',Helvetica,Arial,sans-serif"
+            fontSize="22" fontWeight="700" fill="white">n</text>
+        </svg>
         <div className="text-xs text-nomi-secondary mt-0.5 truncate">{clientName}</div>
       </div>
 
