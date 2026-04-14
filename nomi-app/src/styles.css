@@ -1,0 +1,68 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-bg: #f2ede4;
+  --color-text: #1a1f2e;
+  --color-secondary: #9aa0b0;
+  --color-accent: #6aaad9;
+  --color-border: #ddd8ce;
+}
+
+* {
+  font-family: 'Outfit', sans-serif;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+  background-color: #f2ede4;
+  color: #1a1f2e;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Selección de texto */
+::selection {
+  background: rgba(106, 170, 217, 0.25);
+}
+
+/* Scrollbar personalizada */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #ddd8ce;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #9aa0b0;
+}
+
+/* Transiciones globales */
+button, a, input, textarea, select {
+  transition: all 0.15s ease;
+}
+
+/* Sin outline visible en focus (usamos border-color en su lugar) */
+:focus {
+  outline: none;
+}
+
+/* Utilidades de texto */
+.font-outfit {
+  font-family: 'Outfit', sans-serif;
+}
+
+/* Textarea sin resize por defecto */
+textarea {
+  resize: vertical;
+}
