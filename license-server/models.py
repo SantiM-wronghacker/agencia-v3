@@ -18,12 +18,30 @@ class HeartbeatResponse(BaseModel):
 
 class ClientCreate(BaseModel):
     name: str
+    email: str
     license_key: str | None = None   # si None se genera automático
     package_type: str = "basic"
     paid_until: str                  # ISO date "2026-05-01"
+    agentes: list[str] | None = None
 
 
 class ClientUpdate(BaseModel):
     active: bool | None = None
     paid_until: str | None = None
     package_type: str | None = None
+    status: str | None = None
+    agentes: list[str] | str | None = None  # Accept list or JSON string
+    notes: str | None = None
+
+
+class SendLinkRequest(BaseModel):
+    download_url: str | None = None  # override default template
+
+
+class ValidateResponse(BaseModel):
+    valid: bool
+    status: str
+    client_name: str | None = None
+    plan: str | None = None
+    agentes: list[str] | None = None
+    message: str | None = None

@@ -7,11 +7,16 @@ _SCHEMA = """
 CREATE TABLE IF NOT EXISTS clients (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
+  email TEXT NOT NULL,
   license_key TEXT UNIQUE NOT NULL,
   package_type TEXT NOT NULL DEFAULT 'basic',
+  status TEXT NOT NULL DEFAULT 'active',
+  agentes TEXT NOT NULL DEFAULT '[]',
+  notes TEXT DEFAULT '',
   active INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL,
-  paid_until TEXT NOT NULL
+  paid_until TEXT NOT NULL,
+  last_heartbeat TEXT
 );
 
 CREATE TABLE IF NOT EXISTS heartbeats (
@@ -86,18 +91,21 @@ class LicenseDB:
     def create_client(
         self,
         name: str,
+        email: str,
         license_key: str,
         package_type: str,
         paid_until: str,
+        agentes: str = None,
     ) -> str:
         client_id = str(uuid.uuid4())
+        agentes = agentes or "[]"
         with self._connect() as conn:
             conn.execute(
                 """
-                INSERT INTO clients (id, name, license_key, package_type, active, created_at, paid_until)
-                VALUES (?, ?, ?, ?, 1, ?, ?)
+                INSERT INTO clients (id, name, email, license_key, package_type, status, agentes, active, created_at, paid_until)
+                VALUES (?, ?, ?, ?, ?, 'active', ?, 1, ?, ?)
                 """,
-                (client_id, name, license_key, package_type, _now(), paid_until),
+                (client_id, name, email, license_key, package_type, agentes, _now(), paid_until),
             )
         return client_id
 
@@ -118,7 +126,7 @@ class LicenseDB:
             return _row_to_dict(cur, row) if row else None
 
     def update_client(self, client_id: str, **kwargs) -> None:
-        allowed = {"active", "paid_until", "package_type"}
+        allowed = {"active", "paid_until", "package_type", "status", "agentes", "notes"}
         fields = {k: v for k, v in kwargs.items() if k in allowed and v is not None}
         if not fields:
             return
@@ -181,3 +189,10 @@ class LicenseDB:
                 (client_id, limit),
             )
             return [_row_to_dict(cur, row) for row in cur.fetchall()]
+
+    def update_last_heartbeat(self, client_id: str, timestamp: str) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                "UPDATE clients SET last_heartbeat = ? WHERE id = ?",
+                (timestamp, client_id),
+            )

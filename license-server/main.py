@@ -20,6 +20,8 @@ from models import (
     ClientUpdate,
     HeartbeatRequest,
     HeartbeatResponse,
+    SendLinkRequest,
+    ValidateResponse,
 )
 
 app = FastAPI(title="License Server", version="1.0.0")
@@ -41,6 +43,66 @@ def get_db() -> LicenseDB:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+def _send_email(to: str, subject: str, body: str, html: bool = False) -> None:
+    """Envía email usando SMTP."""
+    import smtplib
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
+
+    smtp_host = os.getenv("SMTP_HOST")
+    smtp_port = int(os.getenv("SMTP_PORT", "587"))
+    smtp_user = os.getenv("SMTP_USER")
+    smtp_password = os.getenv("SMTP_PASSWORD")
+
+    if not all([smtp_host, smtp_user, smtp_password]):
+        raise ValueError("SMTP credentials not configured")
+
+    msg = MIMEMultipart("alternative")
+    msg["From"] = smtp_user
+    msg["To"] = to
+    msg["Subject"] = subject
+
+    mime_type = "html" if html else "plain"
+    msg.attach(MIMEText(body, mime_type, "utf-8"))
+
+    with smtplib.SMTP(smtp_host, smtp_port, timeout=30) as smtp:
+        smtp.ehlo()
+        smtp.starttls()
+        smtp.login(smtp_user, smtp_password)
+        smtp.sendmail(smtp_user, to, msg.as_string())
+
+
+def _email_template(client_name: str, license_key: str, download_url: str) -> str:
+    """Template HTML para email de descarga."""
+    return f"""
+    <html>
+    <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2>¡Bienvenido {client_name}!</h2>
+        <p>Tu Agencia IA está lista para usar. Descárgala e ingresa tu clave de licencia:</p>
+
+        <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <p><strong>Clave de Licencia:</strong></p>
+            <code style="font-size: 14px; word-break: break-all;">{license_key}</code>
+        </div>
+
+        <p>
+            <a href="{download_url}"
+               style="background-color: #007bff; color: white; padding: 12px 24px;
+                      text-decoration: none; border-radius: 4px; display: inline-block;">
+                Descargar Agencia IA
+            </a>
+        </p>
+
+        <p>Guarda tu clave de licencia en un lugar seguro. La necesitarás para activar la aplicación.</p>
+        <p>¿Preguntas? Contacta a: <a href="mailto:support@agencia-ia.com">support@agencia-ia.com</a></p>
+
+        <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+        <p style="font-size: 12px; color: #666;">© 2026 Agencia IA. Todos los derechos reservados.</p>
+    </body>
+    </html>
+    """
+
 
 def _compute_status(client: dict, last_hb: dict | None) -> tuple[bool, str, str, int, int]:
     """Returns (active, status, message, days_remaining, hours_offline)."""
@@ -98,6 +160,7 @@ async def heartbeat(req: HeartbeatRequest, request: Request, db: LicenseDB = Dep
 
     ip = request.client.host if request.client else "unknown"
     db.record_heartbeat(client["id"], ip, req.package_type, status)
+    db.update_last_heartbeat(client["id"], req.timestamp)
 
     return HeartbeatResponse(
         active=active,
@@ -109,17 +172,65 @@ async def heartbeat(req: HeartbeatRequest, request: Request, db: LicenseDB = Dep
 
 
 # ---------------------------------------------------------------------------
+# Public validation endpoint
+# ---------------------------------------------------------------------------
+
+@app.get("/validate/{license_key}", response_model=ValidateResponse)
+async def validate_license(license_key: str, db: LicenseDB = Depends(get_db)):
+    """Valida una licencia desde la app Electron."""
+    import json
+
+    client = db.get_client_by_key(license_key)
+    if client is None:
+        return ValidateResponse(
+            valid=False,
+            status="invalid",
+            message="Licencia no encontrada",
+        )
+
+    last_hb = db.get_last_heartbeat(client["id"])
+    active, status, message, _, _ = _compute_status(client, last_hb)
+
+    if not active or status == "blocked":
+        return ValidateResponse(
+            valid=False,
+            status=status,
+            client_name=client["name"],
+            message=message or "Acceso denegado",
+        )
+
+    agentes = []
+    try:
+        agentes = json.loads(client.get("agentes", "[]"))
+    except (json.JSONDecodeError, TypeError):
+        agentes = []
+
+    return ValidateResponse(
+        valid=True,
+        status=status,
+        client_name=client["name"],
+        plan=client.get("package_type", "basic"),
+        agentes=agentes,
+        message=message,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Admin endpoints
 # ---------------------------------------------------------------------------
 
 @app.post("/clients", dependencies=[Depends(verify_admin)])
 async def create_client(body: ClientCreate, db: LicenseDB = Depends(get_db)):
+    import json
     license_key = body.license_key or str(uuid.uuid4()).replace("-", "")
+    agentes_json = json.dumps(body.agentes or [])
     client_id = db.create_client(
         name=body.name,
+        email=body.email,
         license_key=license_key,
         package_type=body.package_type,
         paid_until=body.paid_until,
+        agentes=agentes_json,
     )
     return {"id": client_id, "license_key": license_key}
 
@@ -160,13 +271,27 @@ async def get_client(client_id: str, db: LicenseDB = Depends(get_db)):
 
 @app.patch("/clients/{client_id}", dependencies=[Depends(verify_admin)])
 async def update_client(client_id: str, body: ClientUpdate, db: LicenseDB = Depends(get_db)):
+    import json
+
     if db.get_client(client_id) is None:
         raise HTTPException(status_code=404, detail="Cliente no encontrado")
+
+    # Prepare agentes field
+    agentes = None
+    if body.agentes is not None:
+        if isinstance(body.agentes, list):
+            agentes = json.dumps(body.agentes)
+        else:
+            agentes = body.agentes
+
     db.update_client(
         client_id,
         active=int(body.active) if body.active is not None else None,
         paid_until=body.paid_until,
         package_type=body.package_type,
+        status=body.status,
+        agentes=agentes,
+        notes=body.notes,
     )
     return {"ok": True}
 
@@ -183,8 +308,48 @@ async def block_client(client_id: str, db: LicenseDB = Depends(get_db)):
 async def unblock_client(client_id: str, db: LicenseDB = Depends(get_db)):
     if db.get_client(client_id) is None:
         raise HTTPException(status_code=404, detail="Cliente no encontrado")
-    db.update_client(client_id, active=1)
+    db.update_client(client_id, active=1, status="active")
     return {"ok": True}
+
+
+@app.post("/clients/{client_id}/send-link", dependencies=[Depends(verify_admin)])
+async def send_download_link(
+    client_id: str,
+    body: SendLinkRequest,
+    db: LicenseDB = Depends(get_db),
+):
+    """Envía email con link de descarga + license_key al cliente."""
+    client = db.get_client(client_id)
+    if client is None:
+        raise HTTPException(status_code=404, detail="Cliente no encontrado")
+
+    # Template del link de descarga
+    download_url = body.download_url or os.getenv(
+        "DOWNLOAD_LINK_TEMPLATE",
+        "https://tu-dominio.com/download?key={license_key}",
+    ).format(license_key=client["license_key"])
+
+    # Datos del email
+    email_to = client["email"]
+    client_name = client["name"]
+    license_key = client["license_key"]
+
+    # Enviar email
+    try:
+        _send_email(
+            to=email_to,
+            subject=f"Tu Agencia IA — Descarga y Licencia",
+            body=_email_template(client_name, license_key, download_url),
+            html=True,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al enviar email: {str(e)}")
+
+    return {
+        "ok": True,
+        "message": f"Email enviado a {email_to}",
+        "download_url": download_url,
+    }
 
 
 @app.get("/dashboard", response_class=HTMLResponse)
