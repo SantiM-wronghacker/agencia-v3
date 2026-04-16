@@ -53,33 +53,32 @@ def get_db() -> LicenseDB:
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _send_email(to: str, subject: str, body: str, html: bool = False) -> None:
-    """Envía email usando SMTP."""
-    import smtplib
-    from email.mime.multipart import MIMEMultipart
-    from email.mime.text import MIMEText
+def _send_email(to: str, subject: str, html: str) -> None:
+    """Envía email usando la API HTTP de Resend."""
+    import requests
 
-    smtp_host = os.getenv("SMTP_HOST")
-    smtp_port = int(os.getenv("SMTP_PORT", "587"))
-    smtp_user = os.getenv("SMTP_USER")
-    smtp_password = os.getenv("SMTP_PASSWORD")
+    api_key = os.getenv("RESEND_API_KEY")
+    from_email = os.getenv("FROM_EMAIL", "hola@nomi-mx.com")
 
-    if not all([smtp_host, smtp_user, smtp_password]):
-        raise ValueError("SMTP credentials not configured")
+    if not api_key:
+        raise ValueError("RESEND_API_KEY not configured")
 
-    msg = MIMEMultipart("alternative")
-    msg["From"] = smtp_user
-    msg["To"] = to
-    msg["Subject"] = subject
+    response = requests.post(
+        "https://api.resend.com/emails",
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        },
+        json={
+            "from": from_email,
+            "to": [to],
+            "subject": subject,
+            "html": html
+        }
+    )
 
-    mime_type = "html" if html else "plain"
-    msg.attach(MIMEText(body, mime_type, "utf-8"))
-
-    with smtplib.SMTP(smtp_host, smtp_port, timeout=30) as smtp:
-        smtp.ehlo()
-        smtp.starttls()
-        smtp.login(smtp_user, smtp_password)
-        smtp.sendmail(smtp_user, to, msg.as_string())
+    if response.status_code != 200:
+        raise ValueError(f"Resend API error: {response.text}")
 
 
 def _email_template(client_name: str, license_key: str, download_url: str) -> str:
@@ -348,8 +347,7 @@ async def send_download_link(
         _send_email(
             to=email_to,
             subject=f"Tu Agencia IA — Descarga y Licencia",
-            body=_email_template(client_name, license_key, download_url),
-            html=True,
+            html=_email_template(client_name, license_key, download_url),
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al enviar email: {str(e)}")
