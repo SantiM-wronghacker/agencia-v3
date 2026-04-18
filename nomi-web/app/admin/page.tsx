@@ -15,6 +15,48 @@ interface Client {
 
 const ADMIN_PASSWORD = 'nomi2026'
 
+const PLAN_AGENTS: Record<string, string[]> = {
+  lite: ['ops_daily', 'lead_nurturing', 'quotation_generator', 'health_assistant', 'insurance_advisor'],
+  core: ['email_campaign', 'hr_onboarding', 'sales_pipeline', 'social_media_manager', 'ops_automation', 'ops_daily', 'lead_nurturing', 'quotation_generator'],
+  prime: ['content_pipeline', 'business_analysis', 'financial_advisor', 'market_intelligence', 'legal_review', 'daily_report', 'email_campaign', 'hr_onboarding', 'sales_pipeline', 'social_media_manager', 'ops_automation', 'ops_daily', 'lead_nurturing', 'quotation_generator'],
+}
+
+const ALL_AGENTS: { key: string; label: string }[] = [
+  { key: 'ops_daily', label: 'Ops Diarias' },
+  { key: 'lead_nurturing', label: 'Lead Nurturing' },
+  { key: 'quotation_generator', label: 'Cotizaciones' },
+  { key: 'health_assistant', label: 'Salud' },
+  { key: 'insurance_advisor', label: 'Seguros' },
+  { key: 'email_campaign', label: 'Email Campaign' },
+  { key: 'hr_onboarding', label: 'HR Onboarding' },
+  { key: 'sales_pipeline', label: 'Sales Pipeline' },
+  { key: 'social_media_manager', label: 'Social Media' },
+  { key: 'ops_automation', label: 'Ops Automation' },
+  { key: 'content_pipeline', label: 'Content Pipeline' },
+  { key: 'business_analysis', label: 'Business Analysis' },
+  { key: 'financial_advisor', label: 'Finanzas' },
+  { key: 'market_intelligence', label: 'Inteligencia' },
+  { key: 'legal_review', label: 'Legal Review' },
+  { key: 'daily_report', label: 'Reporte Diario' },
+  { key: 'accounting_report', label: 'Contabilidad' },
+  { key: 'blog_publisher', label: 'Blog Publisher' },
+  { key: 'content_repurposer', label: 'Content Repurposer' },
+  { key: 'restaurant_manager', label: 'Restaurante' },
+  { key: 'real_estate_agent', label: 'Bienes Raíces' },
+  { key: 'logistics_coordinator', label: 'Logística' },
+  { key: 'travel_planner', label: 'Viajes' },
+  { key: 'education_manager', label: 'Educación' },
+  { key: 'social_autopilot', label: 'Autopiloto Social' },
+]
+
+const BLANK_CLIENT = {
+  name: '',
+  email: '',
+  package_type: 'lite',
+  paid_until: '',
+  agentes: PLAN_AGENTS['lite'],
+}
+
 export default function AdminPage() {
   const [authenticated, setAuthenticated] = useState(false)
   const [password, setPassword] = useState('')
@@ -22,12 +64,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [showNewClientForm, setShowNewClientForm] = useState(false)
-  const [newClient, setNewClient] = useState({
-    name: '',
-    email: '',
-    package_type: 'lite',
-    paid_until: '',
-  })
+  const [newClient, setNewClient] = useState(BLANK_CLIENT)
 
   useEffect(() => {
     const stored = localStorage.getItem('nomi_admin_auth')
@@ -60,11 +97,24 @@ export default function AdminPage() {
     setLoading(false)
   }
 
+  const handlePlanChange = (plan: string) => {
+    setNewClient({ ...newClient, package_type: plan, agentes: PLAN_AGENTS[plan] ?? [] })
+  }
+
+  const toggleAgent = (key: string) => {
+    setNewClient(prev => ({
+      ...prev,
+      agentes: prev.agentes.includes(key)
+        ? prev.agentes.filter(a => a !== key)
+        : [...prev.agentes, key],
+    }))
+  }
+
   const handleCreateClient = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
       await createClient(newClient)
-      setNewClient({ name: '', email: '', package_type: 'lite', paid_until: '' })
+      setNewClient(BLANK_CLIENT)
       setShowNewClientForm(false)
       await loadClients()
     } catch (err) {
@@ -138,6 +188,8 @@ export default function AdminPage() {
     )
   }
 
+  const planDefaults = PLAN_AGENTS[newClient.package_type] ?? []
+
   return (
     <div className="min-h-screen bg-nomi-bg">
       <nav className="border-b border-nomi-border sticky top-0 bg-nomi-bg/80 backdrop-blur">
@@ -172,7 +224,7 @@ export default function AdminPage() {
         {showNewClientForm && (
           <div className="glass rounded-2xl p-8 mb-8">
             <h3 className="text-2xl font-600 mb-6">Nuevo cliente</h3>
-            <form onSubmit={handleCreateClient} className="space-y-4">
+            <form onSubmit={handleCreateClient} className="space-y-6">
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-500 mb-2">Nombre</label>
@@ -198,7 +250,7 @@ export default function AdminPage() {
                   <label className="block text-sm font-500 mb-2">Plan</label>
                   <select
                     value={newClient.package_type}
-                    onChange={e => setNewClient({ ...newClient, package_type: e.target.value })}
+                    onChange={e => handlePlanChange(e.target.value)}
                     className="w-full px-4 py-2 bg-white/60 border border-nomi-border rounded-lg focus:outline-none focus:border-nomi-accent"
                   >
                     <option value="lite">Lite</option>
@@ -217,6 +269,49 @@ export default function AdminPage() {
                   />
                 </div>
               </div>
+
+              {/* Agent selector */}
+              <div>
+                <div className="flex items-center gap-3 mb-3">
+                  <label className="text-sm font-500">
+                    Agentes
+                  </label>
+                  <span className="text-xs text-nomi-secondary bg-white/50 px-2 py-0.5 rounded-full border border-nomi-border">
+                    {newClient.agentes.length} seleccionados
+                  </span>
+                  <span className="text-xs text-nomi-secondary">
+                    — sombreados = incluidos en el plan {newClient.package_type}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+                  {ALL_AGENTS.map(({ key, label }) => {
+                    const isInPlan = planDefaults.includes(key)
+                    const isChecked = newClient.agentes.includes(key)
+                    return (
+                      <label
+                        key={key}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors text-sm select-none ${
+                          isChecked
+                            ? 'border-nomi-accent bg-nomi-accent/10 text-nomi-text'
+                            : 'border-nomi-border bg-white/40 text-nomi-secondary hover:bg-white/60'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => toggleAgent(key)}
+                          className="accent-nomi-accent shrink-0"
+                        />
+                        <span className="truncate">{label}</span>
+                        {isInPlan && (
+                          <span className="ml-auto shrink-0 w-1.5 h-1.5 rounded-full bg-nomi-accent" />
+                        )}
+                      </label>
+                    )
+                  })}
+                </div>
+              </div>
+
               <div className="flex gap-4">
                 <button
                   type="submit"
@@ -226,7 +321,7 @@ export default function AdminPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setShowNewClientForm(false)}
+                  onClick={() => { setShowNewClientForm(false); setNewClient(BLANK_CLIENT) }}
                   className="px-6 py-2 border border-nomi-border rounded-lg font-500 hover:bg-white/30"
                 >
                   Cancelar
